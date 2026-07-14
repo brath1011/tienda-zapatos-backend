@@ -25,6 +25,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -46,13 +47,16 @@ public class SecurityConfig {
                 .requestMatchers("/api/zapatos/**").permitAll() 
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/pedidos/comprar").permitAll()
+                .requestMatchers("/api/debug/**").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ADMINISTRADOR")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             )
-            .httpBasic(Customizer.withDefaults());
+            .httpBasic(Customizer.withDefaults())
+            // Filtro para autenticar SSE por query param ?token=
+            .addFilterBefore(new SseTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

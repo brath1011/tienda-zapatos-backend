@@ -25,14 +25,18 @@ public class ProductoController {
 
     private final ProductoRepository productoRepository;
     private final com.Utp.DesarrolloWeb.service.CampanaService campanaService;
+    private final com.Utp.DesarrolloWeb.service.CloudinaryService cloudinaryService;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     // [INYECCIÓN DE DEPENDENCIAS]: Desacoplamiento utilizando el patrón Singleton por constructor.
-    public ProductoController(ProductoRepository productoRepository, com.Utp.DesarrolloWeb.service.CampanaService campanaService) {
+    public ProductoController(ProductoRepository productoRepository, 
+                              com.Utp.DesarrolloWeb.service.CampanaService campanaService,
+                              com.Utp.DesarrolloWeb.service.CloudinaryService cloudinaryService) {
         this.productoRepository = productoRepository;
         this.campanaService = campanaService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     // 1. LEER CATÁLOGO [ENDPOINT PÚBLICO - GET]: Responde a las peticiones del frontend para la grilla principal con paginación.
@@ -99,17 +103,22 @@ public class ProductoController {
             // Borrar las que ya no se usan
             for (String imgAntigua : imagenesAntiguas) {
                 if (!imagenesNuevas.contains(imgAntigua)) {
-                    try {
-                        // Extraer solo la parte /uploads/archivo.jpg
-                        String relativePath = imgAntigua;
-                        int idx = relativePath.indexOf("/uploads/");
-                        if (idx >= 0) {
-                            relativePath = relativePath.substring(idx);
+                    if (imgAntigua.contains("res.cloudinary.com")) {
+                        // Borrar de Cloudinary
+                        cloudinaryService.eliminarImagen(imgAntigua);
+                    } else if (imgAntigua.contains("/uploads/")) {
+                        // Borrar local (legacy)
+                        try {
+                            String relativePath = imgAntigua;
+                            int idx = relativePath.indexOf("/uploads/");
+                            if (idx >= 0) {
+                                relativePath = relativePath.substring(idx);
+                            }
+                            String filePath = relativePath.replaceFirst("^/", "");
+                            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(filePath));
+                        } catch (Exception e) {
+                            System.err.println("No se pudo eliminar imagen antigua local: " + e.getMessage());
                         }
-                        String filePath = relativePath.replaceFirst("^/", "");
-                        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(filePath));
-                    } catch (Exception e) {
-                        System.err.println("No se pudo eliminar imagen antigua: " + e.getMessage());
                     }
                 }
             }
@@ -133,13 +142,15 @@ public class ProductoController {
         if (productoAEliminar.getImagen() != null) {
             for (String url : productoAEliminar.getImagen().split(",")) {
                 String trimmed = url.trim();
-                if (trimmed.contains("/uploads/")) {
+                if (trimmed.contains("res.cloudinary.com")) {
+                    cloudinaryService.eliminarImagen(trimmed);
+                } else if (trimmed.contains("/uploads/")) {
                     try {
                         int idx = trimmed.indexOf("/uploads/");
                         String relativePath = trimmed.substring(idx).replaceFirst("^/", "");
                         java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(relativePath));
                     } catch (Exception e) {
-                        System.err.println("No se pudo eliminar imagen: " + e.getMessage());
+                        System.err.println("No se pudo eliminar imagen local: " + e.getMessage());
                     }
                 }
             }
@@ -154,7 +165,7 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
-    // 6. SUBIR IMAGEN [ENDPOINT PRIVADO - POST]: Sube una imagen al servidor y retorna su URL
+    // 6. SUBIR IMAGEN [ENDPOINT PRIVADO - POST]: Sube una imagen a Cloudinary y retorna su URL
     @PostMapping("/upload")
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     public ResponseEntity<Map<String, String>> subirImagen(@RequestParam("file") MultipartFile file) {
@@ -162,20 +173,14 @@ public class ProductoController {
             throw new RuntimeException("El archivo seleccionado está vacío");
         }
         try {
-            String folder = "uploads/";
-            java.io.File directory = new java.io.File(folder);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            java.nio.file.Path path = java.nio.file.Paths.get(folder + fileName);
-            java.nio.file.Files.write(path, file.getBytes());
+            // Sube la imagen a Cloudinary y obtiene la URL segura
+            String urlCloudinary = cloudinaryService.subirImagen(file);
 
             java.util.Map<String, String> response = new java.util.HashMap<>();
-            response.put("url", "/uploads/" + fileName);
+            response.put("url", urlCloudinary);
             return ResponseEntity.ok(response);
         } catch (java.io.IOException e) {
-            throw new RuntimeException("Error al guardar la imagen en el servidor: " + e.getMessage());
+            throw new RuntimeException("Error al guardar la imagen en Cloudinary: " + e.getMessage());
         }
     }
 }

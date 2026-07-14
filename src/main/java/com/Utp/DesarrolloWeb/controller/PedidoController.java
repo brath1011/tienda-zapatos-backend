@@ -1,11 +1,16 @@
 package com.Utp.DesarrolloWeb.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.Utp.DesarrolloWeb.model.Pedido;
 import com.Utp.DesarrolloWeb.service.PedidoService;
+import com.Utp.DesarrolloWeb.service.SseService;
 
 @RestController
 @RequestMapping("/api/pedidos")
@@ -13,9 +18,11 @@ import com.Utp.DesarrolloWeb.service.PedidoService;
 public class PedidoController {
 
     private final PedidoService pedidoService;
+    private final SseService sseService;
 
-    public PedidoController(PedidoService pedidoService) {
+    public PedidoController(PedidoService pedidoService, SseService sseService) {
         this.pedidoService = pedidoService;
+        this.sseService = sseService;
     }
 
     // POST: El cliente compra sus zapatos (Requiere estar logueado como USER o ADMIN)
@@ -127,6 +134,15 @@ public class PedidoController {
     }
 
     // ---------------- ENDPOINTS REPARTIDOR ---------------- //
+
+    // SSE: El repartidor se suscribe para recibir notificaciones en tiempo real
+    // La conexión queda abierta; el servidor empuja eventos cuando hay un pedido nuevo
+    @GetMapping(value = "/notificaciones", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("hasAuthority('REPARTIDOR')")
+    public SseEmitter suscribirNotificaciones(@AuthenticationPrincipal Jwt jwt) {
+        String emailRepartidor = jwt.getSubject();
+        return sseService.suscribir(emailRepartidor);
+    }
 
     @GetMapping("/reparto")
     @PreAuthorize("hasAuthority('REPARTIDOR')")

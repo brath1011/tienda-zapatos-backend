@@ -30,6 +30,7 @@ public class PedidoService {
     private final SimuladorPagoService simuladorPagoService;
     private final DireccionRepository direccionRepository;
     private final com.Utp.DesarrolloWeb.repository.ReservaTemporalRepository reservaTemporalRepository;
+    private final SseService sseService;
 
     // Respetando el Patrón Singleton e Inyección por Constructor
     public PedidoService(PedidoRepository pedidoRepository, 
@@ -41,7 +42,8 @@ public class PedidoService {
                          CampanaService campanaService,
                          SimuladorPagoService simuladorPagoService,
                          DireccionRepository direccionRepository,
-                         com.Utp.DesarrolloWeb.repository.ReservaTemporalRepository reservaTemporalRepository) {
+                         com.Utp.DesarrolloWeb.repository.ReservaTemporalRepository reservaTemporalRepository,
+                         SseService sseService) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
         this.pagoRepository = pagoRepository;
@@ -52,6 +54,7 @@ public class PedidoService {
         this.simuladorPagoService = simuladorPagoService;
         this.direccionRepository = direccionRepository;
         this.reservaTemporalRepository = reservaTemporalRepository;
+        this.sseService = sseService;
     }
 
     // FLUJO DEL CLIENTE: Registrar compra con control estricto de transacciones (Guía 07)
@@ -446,6 +449,8 @@ public class PedidoService {
                 Usuario repartidor = usuarioRepository.findById(idRepartidor)
                     .orElseThrow(() -> new RuntimeException("Repartidor no encontrado"));
                 pedido.setRepartidor(repartidor);
+                // Notificar al repartidor en tiempo real via SSE
+                sseService.notificarNuevoPedido(repartidor.getEmail());
             }
         }
         
