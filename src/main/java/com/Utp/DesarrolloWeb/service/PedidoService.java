@@ -162,9 +162,27 @@ public class PedidoService {
             }
         }
 
-        // Calculamos el total de toda la compra sumando precio_unitario * cantidad
-        double total = pedido.getDetalles().stream().mapToDouble(d -> d.getPrecioUnitario() * d.getCantidad()).sum();
-        pedido.setTotal(total);
+        // SEGURIDAD BACKEND: CALCULAR COSTO DE ENVÍO
+        double costoEnvio = 0.0;
+        String dptoStr = request.getDepartamento();
+        if (dptoStr != null) {
+            String d = dptoStr.toUpperCase();
+            if (d.contains("LIMA") || d.contains("CALLAO")) {
+                costoEnvio = 0.0;
+            } else if (d.contains("ICA") || d.contains("ANCASH") || d.contains("LIBERTAD") || d.contains("LAMBAYEQUE") || d.contains("JUNIN")) {
+                costoEnvio = 15.0;
+            } else if (d.contains("LORETO")) {
+                costoEnvio = 35.0;
+            } else {
+                costoEnvio = 28.0; // Resto de macro-regiones Sur, Selva, etc.
+            }
+        }
+        pedido.setCostoEnvio(costoEnvio);
+
+        // Calculamos el subtotal de toda la compra sumando precio_unitario * cantidad
+        double subtotal = pedido.getDetalles().stream().mapToDouble(det -> det.getPrecioUnitario() * det.getCantidad()).sum();
+        pedido.setSubtotal(subtotal);
+        pedido.setTotal(subtotal + costoEnvio);
 
         // Guardamos el pedido (y los detalles en cascada)
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
@@ -262,8 +280,10 @@ public class PedidoService {
             detalle.setPedido(pedido);
         }
 
-        double total = pedido.getDetalles().stream().mapToDouble(d -> d.getPrecioUnitario() * d.getCantidad()).sum();
-        pedido.setTotal(total);
+        double subtotal = pedido.getDetalles().stream().mapToDouble(d -> d.getPrecioUnitario() * d.getCantidad()).sum();
+        pedido.setSubtotal(subtotal);
+        pedido.setCostoEnvio(0.0);
+        pedido.setTotal(subtotal);
 
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
