@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 public class CloudinaryConfig {
 
     // Credenciales proporcionadas por el usuario
-    private final String CLOUD_NAME = "kdjlvo1a";
-    private final String API_KEY = "362896654353711";
+    private final String CLOUD_NAME = //generas tu cloud name
+    private final String API_KEY = //colocas tu apikey
     // Nota: Reemplazaremos el API_SECRET directamente aquí.
-    private final String API_SECRET = "n6e2omMUZnXhIX8ETE1cdTgYDqc";
+    private final String API_SECRET = //genera api secret
 
     @Bean
     public Cloudinary cloudinary() {
