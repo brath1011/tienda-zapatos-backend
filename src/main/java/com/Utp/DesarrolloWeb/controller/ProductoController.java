@@ -80,6 +80,41 @@ public class ProductoController {
         productoExistente.setCategoria(datosActualizados.getCategoria());
         productoExistente.setDescripcion(datosActualizados.getDescripcion());
         productoExistente.setDescripcionGeneral(datosActualizados.getDescripcionGeneral());
+        // Eliminar imágenes físicas antiguas que ya no están en la nueva lista
+        if (productoExistente.getImagen() != null && !productoExistente.getImagen().equals(datosActualizados.getImagen())) {
+            // Obtener lista de imágenes antiguas y nuevas
+            java.util.Set<String> imagenesAntiguas = new java.util.HashSet<>();
+            for (String url : productoExistente.getImagen().split(",")) {
+                String trimmed = url.trim();
+                if (trimmed.startsWith("/uploads/") || trimmed.contains("/uploads/")) {
+                    imagenesAntiguas.add(trimmed);
+                }
+            }
+            java.util.Set<String> imagenesNuevas = new java.util.HashSet<>();
+            if (datosActualizados.getImagen() != null) {
+                for (String url : datosActualizados.getImagen().split(",")) {
+                    imagenesNuevas.add(url.trim());
+                }
+            }
+            // Borrar las que ya no se usan
+            for (String imgAntigua : imagenesAntiguas) {
+                if (!imagenesNuevas.contains(imgAntigua)) {
+                    try {
+                        // Extraer solo la parte /uploads/archivo.jpg
+                        String relativePath = imgAntigua;
+                        int idx = relativePath.indexOf("/uploads/");
+                        if (idx >= 0) {
+                            relativePath = relativePath.substring(idx);
+                        }
+                        String filePath = relativePath.replaceFirst("^/", "");
+                        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(filePath));
+                    } catch (Exception e) {
+                        System.err.println("No se pudo eliminar imagen antigua: " + e.getMessage());
+                    }
+                }
+            }
+        }
+        
         productoExistente.setImagen(datosActualizados.getImagen());
         
         Producto productoSalvado = productoRepository.save(productoExistente);
@@ -91,9 +126,25 @@ public class ProductoController {
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     @Transactional
     public ResponseEntity<Void> eliminarZapato(@PathVariable Long id) {
-        if (!productoRepository.existsById(id)) {
-            throw new RuntimeException("No existe el calzado con ID: " + id);
+        Producto productoAEliminar = productoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("No existe el calzado con ID: " + id));
+            
+        // Eliminar TODAS las imágenes físicas asociadas (separadas por coma)
+        if (productoAEliminar.getImagen() != null) {
+            for (String url : productoAEliminar.getImagen().split(",")) {
+                String trimmed = url.trim();
+                if (trimmed.contains("/uploads/")) {
+                    try {
+                        int idx = trimmed.indexOf("/uploads/");
+                        String relativePath = trimmed.substring(idx).replaceFirst("^/", "");
+                        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(relativePath));
+                    } catch (Exception e) {
+                        System.err.println("No se pudo eliminar imagen: " + e.getMessage());
+                    }
+                }
+            }
         }
+
         // Eliminar dependencias en orden para evitar violaciones de FK
         entityManager.createNativeQuery("DELETE FROM carrito_items WHERE producto_id = :id").setParameter("id", id).executeUpdate();
         entityManager.createNativeQuery("DELETE FROM reserva_temporal_detalle WHERE producto_id = :id").setParameter("id", id).executeUpdate();

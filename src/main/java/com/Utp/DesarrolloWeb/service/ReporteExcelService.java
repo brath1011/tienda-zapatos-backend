@@ -49,7 +49,7 @@ public class ReporteExcelService {
             totalLabelStyle.setFont(totalFont);
 
             // --- CABECERAS ---
-            String[] headers = {"N° Pedido", "Fecha", "Cliente", "Email", "Repartidor", "Zona Reparto", "Tipo Venta", "Estado", "Artículos", "Total Venta"};
+            String[] headers = {"N° Pedido", "Fecha", "Cliente", "Email", "Repartidor", "Zona Reparto", "Tipo Venta", "Estado", "Artículos", "Detalle de Productos", "Total Venta"};
             Row headerRow = sheet.createRow(0);
 
             for (int i = 0; i < headers.length; i++) {
@@ -93,15 +93,25 @@ public class ReporteExcelService {
                 row.createCell(6).setCellValue(pedido.getTipoPedido() != null ? pedido.getTipoPedido() : "WEB");
                 row.createCell(7).setCellValue(pedido.getEstado() != null ? pedido.getEstado() : "PENDIENTE");
 
-                // Cantidad de Artículos (Suma de las cantidades de los detalles)
+                // Cantidad de Artículos y Detalle de Productos
+                String descripcionArticulos = "";
                 int cantidadArticulos = 0;
                 if (pedido.getDetalles() != null) {
-                    cantidadArticulos = pedido.getDetalles().stream().mapToInt(d -> d.getCantidad()).sum();
+                    java.util.List<String> descripciones = new java.util.ArrayList<>();
+                    for(com.Utp.DesarrolloWeb.model.DetallePedido det : pedido.getDetalles()) {
+                        cantidadArticulos += det.getCantidad();
+                        String prod = det.getProducto().getNombre();
+                        String color = det.getProducto().getColor();
+                        String talla = det.getTallaSeleccionada();
+                        descripciones.add(det.getCantidad() + "x " + prod + " (Color: " + (color != null ? color : "N/A") + ", Talla: " + (talla != null ? talla : "N/A") + ")");
+                    }
+                    descripcionArticulos = String.join(" | ", descripciones);
                 }
                 row.createCell(8).setCellValue(cantidadArticulos);
+                row.createCell(9).setCellValue(descripcionArticulos);
 
                 // Total Venta (con formato de moneda)
-                Cell totalCell = row.createCell(9);
+                Cell totalCell = row.createCell(10);
                 double total = pedido.getTotal() != null ? pedido.getTotal() : 0.0;
                 totalCell.setCellValue(total);
                 totalCell.setCellStyle(currencyStyle);
@@ -111,11 +121,11 @@ public class ReporteExcelService {
 
             // --- FILA DE RESUMEN CONTABLE ---
             Row totalRow = sheet.createRow(rowIdx + 1); // Dejamos una fila en blanco por elegancia
-            Cell labelCell = totalRow.createCell(8);
+            Cell labelCell = totalRow.createCell(9);
             labelCell.setCellValue("TOTAL GENERAL:");
             labelCell.setCellStyle(totalLabelStyle);
 
-            Cell sumCell = totalRow.createCell(9);
+            Cell sumCell = totalRow.createCell(10);
             sumCell.setCellValue(sumaTotal);
             sumCell.setCellStyle(totalStyle);
 

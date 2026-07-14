@@ -18,11 +18,17 @@ public class Campana {
     @Column(name = "porcentaje_descuento", nullable = false)
     private Double porcentajeDescuento;
 
+    @Column(name = "filtro_modelo")
+    private String filtroModelo;
+
     @Column(name = "filtro_marca")
     private String filtroMarca;
 
     @Column(name = "filtro_color")
     private String filtroColor;
+
+    @Column(name = "sin_reembolso", columnDefinition = "boolean default false")
+    private Boolean sinReembolso = false;
 
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDate fechaInicio;
@@ -57,4 +63,10 @@ public class Campana {
 
     public Boolean getActiva() { return activa; }
     public void setActiva(Boolean activa) { this.activa = activa; }
+
+    public String getFiltroModelo() { return filtroModelo; }
+    public void setFiltroModelo(String filtroModelo) { this.filtroModelo = filtroModelo; }
+
+    public Boolean getSinReembolso() { return sinReembolso; }
+    public void setSinReembolso(Boolean sinReembolso) { this.sinReembolso = sinReembolso; }
 }

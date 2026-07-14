@@ -106,6 +106,7 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("La reserva expiró o no existe. Por favor, vuelva a intentar la compra."));
             
             // Reconstruir detalles desde la reserva
+            pedido.getDetalles().clear(); // Evita mantener los detalles duplicados enviados por el frontend
             for (com.Utp.DesarrolloWeb.model.ReservaTemporalDetalle rDetalle : reserva.getDetalles()) {
                 Producto producto = rDetalle.getProducto();
                 
@@ -367,7 +368,14 @@ public class PedidoService {
         
         // 3. Cambiar estado
         pedido.setEstado("REEMBOLSADO");
-        return pedidoRepository.save(pedido);
+        Pedido pedidoGuardado = pedidoRepository.save(pedido);
+        
+        // 4. Enviar correo de reembolso
+        if (usuario.getEmail() != null) {
+            emailService.enviarBoletaReembolso(pedidoGuardado, usuario.getEmail());
+        }
+        
+        return pedidoGuardado;
     }
 
     // ---------------- ROLES DE OPERACIÓN ---------------- //
@@ -516,7 +524,7 @@ public class PedidoService {
         String emailAutenticado = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario repartidor = usuarioRepository.findByEmail(emailAutenticado)
             .orElseThrow(() -> new RuntimeException("Repartidor no encontrado"));
-        return pedidoRepository.findByRepartidor(repartidor);
+        return pedidoRepository.findByEstadoAndRepartidor("ENTREGADO", repartidor);
     }
 
     // FLUJO REPARTIDOR: Ver historial por fechas
@@ -525,7 +533,10 @@ public class PedidoService {
         String emailAutenticado = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario repartidor = usuarioRepository.findByEmail(emailAutenticado)
             .orElseThrow(() -> new RuntimeException("Repartidor no encontrado"));
-        return pedidoRepository.findByRepartidorAndFechaBetween(repartidor, inicio, fin);
+        return pedidoRepository.findByRepartidorAndFechaBetween(repartidor, inicio, fin)
+            .stream()
+            .filter(p -> "ENTREGADO".equals(p.getEstado()))
+            .collect(java.util.stream.Collectors.toList());
     }
 
     // ---------------- LÓGICA DE RESERVA TEMPORAL ---------------- //
