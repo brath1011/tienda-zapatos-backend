@@ -49,7 +49,7 @@ public class ReporteExcelService {
             totalLabelStyle.setFont(totalFont);
 
             // --- CABECERAS ---
-            String[] headers = {"N° Pedido", "Fecha", "Cliente", "Email", "Repartidor", "Zona Reparto", "Tipo Venta", "Estado", "Artículos", "Detalle de Productos", "Total Venta"};
+            String[] headers = {"N° Pedido", "Fecha", "Cliente", "Email", "Repartidor", "Zona Reparto", "Tipo Venta", "Estado", "Artículos", "Detalle de Productos", "Subtotal", "Costo Envío", "Total Venta"};
             Row headerRow = sheet.createRow(0);
 
             for (int i = 0; i < headers.length; i++) {
@@ -60,6 +60,8 @@ public class ReporteExcelService {
 
             // --- DATOS ---
             int rowIdx = 1;
+            double sumaSubtotal = 0.0;
+            double sumaCostoEnvio = 0.0;
             double sumaTotal = 0.0;
 
             for (Pedido pedido : pedidos) {
@@ -110,24 +112,44 @@ public class ReporteExcelService {
                 row.createCell(8).setCellValue(cantidadArticulos);
                 row.createCell(9).setCellValue(descripcionArticulos);
 
-                // Total Venta (con formato de moneda)
-                Cell totalCell = row.createCell(10);
+                // Subtotal, Costo Envío, Total Venta
+                Cell subtotalCell = row.createCell(10);
+                double sub = pedido.getSubtotal() != null ? pedido.getSubtotal() : 0.0;
+                subtotalCell.setCellValue(sub);
+                subtotalCell.setCellStyle(currencyStyle);
+                
+                Cell envioCell = row.createCell(11);
+                double envio = pedido.getCostoEnvio() != null ? pedido.getCostoEnvio() : 0.0;
+                envioCell.setCellValue(envio);
+                envioCell.setCellStyle(currencyStyle);
+
+                Cell totalCell = row.createCell(12);
                 double total = pedido.getTotal() != null ? pedido.getTotal() : 0.0;
                 totalCell.setCellValue(total);
                 totalCell.setCellStyle(currencyStyle);
                 
+                sumaSubtotal += sub;
+                sumaCostoEnvio += envio;
                 sumaTotal += total;
             }
 
             // --- FILA DE RESUMEN CONTABLE ---
             Row totalRow = sheet.createRow(rowIdx + 1); // Dejamos una fila en blanco por elegancia
             Cell labelCell = totalRow.createCell(9);
-            labelCell.setCellValue("TOTAL GENERAL:");
+            labelCell.setCellValue("TOTALES GLOBALES:");
             labelCell.setCellStyle(totalLabelStyle);
 
-            Cell sumCell = totalRow.createCell(10);
-            sumCell.setCellValue(sumaTotal);
-            sumCell.setCellStyle(totalStyle);
+            Cell sumSubCell = totalRow.createCell(10);
+            sumSubCell.setCellValue(sumaSubtotal);
+            sumSubCell.setCellStyle(totalStyle);
+
+            Cell sumEnvioCell = totalRow.createCell(11);
+            sumEnvioCell.setCellValue(sumaCostoEnvio);
+            sumEnvioCell.setCellStyle(totalStyle);
+
+            Cell sumTotalCell = totalRow.createCell(12);
+            sumTotalCell.setCellValue(sumaTotal);
+            sumTotalCell.setCellStyle(totalStyle);
 
             // Autoajustar columnas
             for (int i = 0; i < headers.length; i++) {

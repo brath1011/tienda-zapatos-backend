@@ -29,6 +29,12 @@ public class Pedido {
     @Column(name = "total_pagar", nullable = false)
     private Double total;
 
+    @Column(name = "subtotal")
+    private Double subtotal = 0.0;
+
+    @Column(name = "costo_envio")
+    private Double costoEnvio = 0.0;
+
     @Column(length = 50)
     private String estado;
 
