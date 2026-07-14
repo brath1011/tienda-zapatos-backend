@@ -33,7 +33,7 @@ public class EmailService {
 
             String htmlBody = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>"
                     + "<div style='text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 20px;'>"
-                    + "<h1 style='color: #1e3a8a; margin: 0;'>Moda UTP</h1>"
+                    + "<h1 style='color: #1e3a8a; margin: 0;'>UTPShop</h1>"
                     + "<p style='color: #666; margin: 5px 0 0 0;'>Comprobante de Pago Electrónico</p>"
                     + "</div>"
                     + "<p><strong>¡Hola " + (pedido.getUsuario() != null ? pedido.getUsuario().getNombre() : "Cliente") + "!</strong></p>"
@@ -95,6 +95,81 @@ public class EmailService {
 
         } catch (MessagingException e) {
             System.err.println("Error enviando el correo de boleta: " + e.getMessage());
+        }
+    }
+
+    @Async
+    public void enviarBoletaReembolso(Pedido pedido, String correoCliente) {
+        try {
+            MimeMessage mensaje = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+
+            helper.setTo(correoCliente);
+            helper.setSubject("Aviso de Reembolso - ZapatosStore");
+
+            String htmlBody = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; position: relative;'>"
+                    // WATERMARK
+                    + "<div style='position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 40px; color: rgba(231, 76, 60, 0.15); font-weight: 900; z-index: 0; pointer-events: none; border: 5px solid rgba(231, 76, 60, 0.15); padding: 15px; text-transform: uppercase; text-align: center; white-space: nowrap;'>"
+                    + "PEDIDO REEMBOLSADO"
+                    + "</div>"
+                    
+                    + "<div style='text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 20px; position: relative; z-index: 1;'>"
+                    + "<h1 style='color: #1e3a8a; margin: 0;'>UTPShop</h1>"
+                    + "<p style='color: #e74c3c; margin: 5px 0 0 0; font-weight: bold;'>COMPROBANTE DE REEMBOLSO</p>"
+                    + "</div>"
+                    + "<div style='position: relative; z-index: 1;'>"
+                    + "<p><strong>¡Hola " + (pedido.getUsuario() != null ? pedido.getUsuario().getNombre() : "Cliente") + "!</strong></p>"
+                    + "<p>Te informamos que tu pedido ha sido <strong>REEMBOLSADO</strong> exitosamente. A continuación, los detalles de la compra anulada:</p>"
+                    
+                    + "<div style='background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;'>"
+                    + "<h3 style='margin-top: 0; color: #333; font-size: 16px; border-bottom: 1px solid #ccc; padding-bottom: 5px;'>Datos del Cliente</h3>"
+                    + "<p style='margin: 5px 0; font-size: 14px;'><strong>Nombre:</strong> " + (pedido.getUsuario() != null ? pedido.getUsuario().getNombre() : "N/A") + "</p>"
+                    + "<p style='margin: 5px 0; font-size: 14px;'><strong>Documento:</strong> " + (pedido.getUsuario() != null && pedido.getUsuario().getNumeroDocumento() != null ? pedido.getUsuario().getNumeroDocumento() : "N/A") + "</p>"
+                    + "<p style='margin: 5px 0; font-size: 14px;'><strong>Email:</strong> " + correoCliente + "</p>"
+                    + "</div>"
+                    
+                    + "<h3 style='color: #333; font-size: 16px; border-bottom: 1px solid #ccc; padding-bottom: 5px;'>Detalle de la Compra Reembolsada</h3>"
+                    + "<table style='width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;'>"
+                    + "<tr style='border-bottom: 1px dashed #ccc; text-align: left;'>"
+                    + "<th style='padding: 8px 0;'>Cant.</th>"
+                    + "<th style='padding: 8px 0;'>Descripción</th>"
+                    + "<th style='padding: 8px 0;'>P. Unit</th>"
+                    + "<th style='padding: 8px 0; text-align: right;'>Importe</th>"
+                    + "</tr>";
+
+            if(pedido.getDetalles() != null) {
+                for (var detalle : pedido.getDetalles()) {
+                    String nombreProd = detalle.getProducto() != null ? detalle.getProducto().getNombre() : "Producto";
+                    String marca = detalle.getProducto() != null && detalle.getProducto().getMarca() != null ? " (" + detalle.getProducto().getMarca() + ")" : "";
+                    htmlBody += "<tr style='border-bottom: 1px solid #eee;'>"
+                            + "<td style='padding: 8px 0;'>" + detalle.getCantidad() + "</td>"
+                            + "<td style='padding: 8px 0;'>" + nombreProd + marca + "</td>"
+                            + "<td style='padding: 8px 0;'>S/ " + String.format("%.2f", detalle.getPrecioUnitario()) + "</td>"
+                            + "<td style='padding: 8px 0; text-align: right;'>S/ " + String.format("%.2f", detalle.getCantidad() * detalle.getPrecioUnitario()) + "</td>"
+                            + "</tr>";
+                }
+            }
+
+            double total = pedido.getTotal();
+            
+            htmlBody += "</table>"
+                    + "<table style='width: 100%; border-top: 2px dashed #ccc; margin-top: 15px; padding-top: 10px; font-size: 14px;'>"
+                    + "<tr><td style='padding: 15px 0; font-size: 18px; color: #e74c3c;'><strong>TOTAL REEMBOLSADO:</strong></td><td style='text-align: right; font-size: 18px; color: #e74c3c;'><strong>S/ " + String.format("%.2f", total) + "</strong></td></tr>"
+                    + "</table>"
+                    
+                    + "<div style='text-align: center; color: #888; font-size: 13px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;'>"
+                    + "<p style='font-style: italic; margin-bottom: 5px;'>El dinero ha sido retornado a su método de pago original.</p>"
+                    + "<p style='margin-top: 0;'>Si tiene dudas, comuníquese con nuestro soporte.</p>"
+                    + "</div>"
+                    + "</div>" // end of relative z-index 1
+                    + "</div>";
+
+            helper.setText(htmlBody, true);
+            javaMailSender.send(mensaje);
+            System.out.println("Correo de reembolso enviado exitosamente a: " + correoCliente);
+
+        } catch (MessagingException e) {
+            System.err.println("Error enviando el correo de reembolso: " + e.getMessage());
         }
     }
 }

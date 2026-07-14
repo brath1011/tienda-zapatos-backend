@@ -14,6 +14,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class DesarrolloWebApplication {
 
+	@jakarta.annotation.PostConstruct
+	public void init() {
+		java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Lima"));
+	}
+
 	public static void main(String[] args) {
 		SpringApplication.run(DesarrolloWebApplication.class, args);
 	}

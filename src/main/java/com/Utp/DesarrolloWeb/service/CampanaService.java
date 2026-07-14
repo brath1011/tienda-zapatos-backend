@@ -51,21 +51,34 @@ public class CampanaService {
      */
     private boolean aplicaCampana(Producto producto, Campana campana) {
         // Si la campaña no tiene filtros, aplica a todo
-        if (campana.getFiltroMarca() == null && campana.getFiltroColor() == null) {
+        if (campana.getFiltroMarca() == null && campana.getFiltroColor() == null && campana.getFiltroModelo() == null) {
             return true;
         }
 
+        boolean coincideModelo = true;
+        if (campana.getFiltroModelo() != null && !campana.getFiltroModelo().isEmpty()) {
+            coincideModelo = campana.getFiltroModelo().equalsIgnoreCase(producto.getNombre());
+        }
+
         boolean coincideMarca = true;
-        if (campana.getFiltroMarca() != null) {
+        if (campana.getFiltroMarca() != null && !campana.getFiltroMarca().isEmpty()) {
             coincideMarca = campana.getFiltroMarca().equalsIgnoreCase(producto.getMarca());
         }
 
         boolean coincideColor = true;
-        if (campana.getFiltroColor() != null) {
-            coincideColor = campana.getFiltroColor().equalsIgnoreCase(producto.getColor());
+        if (campana.getFiltroColor() != null && !campana.getFiltroColor().isEmpty()) {
+            // Soporta múltiples colores separados por coma
+            String[] coloresCampana = campana.getFiltroColor().split(",");
+            coincideColor = false;
+            for (String c : coloresCampana) {
+                if (c.trim().equalsIgnoreCase(producto.getColor())) {
+                    coincideColor = true;
+                    break;
+                }
+            }
         }
 
-        // Si tiene ambos filtros, deben coincidir ambos. Si tiene uno, debe coincidir ese.
-        return coincideMarca && coincideColor;
+        // Si tiene filtros, deben coincidir todos los que se hayan especificado.
+        return coincideModelo && coincideMarca && coincideColor;
     }
 }

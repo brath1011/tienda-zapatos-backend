@@ -25,14 +25,18 @@ public class ProductoController {
 
     private final ProductoRepository productoRepository;
     private final com.Utp.DesarrolloWeb.service.CampanaService campanaService;
+    private final com.Utp.DesarrolloWeb.service.CloudinaryService cloudinaryService;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     // [INYECCIÓN DE DEPENDENCIAS]: Desacoplamiento utilizando el patrón Singleton por constructor.
-    public ProductoController(ProductoRepository productoRepository, com.Utp.DesarrolloWeb.service.CampanaService campanaService) {
+    public ProductoController(ProductoRepository productoRepository, 
+                              com.Utp.DesarrolloWeb.service.CampanaService campanaService,
+                              com.Utp.DesarrolloWeb.service.CloudinaryService cloudinaryService) {
         this.productoRepository = productoRepository;
         this.campanaService = campanaService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     // 1. LEER CATÁLOGO [ENDPOINT PÚBLICO - GET]: Responde a las peticiones del frontend para la grilla principal con paginación.
@@ -80,6 +84,46 @@ public class ProductoController {
         productoExistente.setCategoria(datosActualizados.getCategoria());
         productoExistente.setDescripcion(datosActualizados.getDescripcion());
         productoExistente.setDescripcionGeneral(datosActualizados.getDescripcionGeneral());
+        // Eliminar imágenes físicas antiguas que ya no están en la nueva lista
+        if (productoExistente.getImagen() != null && !productoExistente.getImagen().equals(datosActualizados.getImagen())) {
+            // Obtener lista de imágenes antiguas y nuevas
+            java.util.Set<String> imagenesAntiguas = new java.util.HashSet<>();
+            for (String url : productoExistente.getImagen().split(",")) {
+                String trimmed = url.trim();
+                if (trimmed.startsWith("/uploads/") || trimmed.contains("/uploads/")) {
+                    imagenesAntiguas.add(trimmed);
+                }
+            }
+            java.util.Set<String> imagenesNuevas = new java.util.HashSet<>();
+            if (datosActualizados.getImagen() != null) {
+                for (String url : datosActualizados.getImagen().split(",")) {
+                    imagenesNuevas.add(url.trim());
+                }
+            }
+            // Borrar las que ya no se usan
+            for (String imgAntigua : imagenesAntiguas) {
+                if (!imagenesNuevas.contains(imgAntigua)) {
+                    if (imgAntigua.contains("res.cloudinary.com")) {
+                        // Borrar de Cloudinary
+                        cloudinaryService.eliminarImagen(imgAntigua);
+                    } else if (imgAntigua.contains("/uploads/")) {
+                        // Borrar local (legacy)
+                        try {
+                            String relativePath = imgAntigua;
+                            int idx = relativePath.indexOf("/uploads/");
+                            if (idx >= 0) {
+                                relativePath = relativePath.substring(idx);
+                            }
+                            String filePath = relativePath.replaceFirst("^/", "");
+                            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(filePath));
+                        } catch (Exception e) {
+                            System.err.println("No se pudo eliminar imagen antigua local: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
+        
         productoExistente.setImagen(datosActualizados.getImagen());
         
         Producto productoSalvado = productoRepository.save(productoExistente);
@@ -91,9 +135,27 @@ public class ProductoController {
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     @Transactional
     public ResponseEntity<Void> eliminarZapato(@PathVariable Long id) {
-        if (!productoRepository.existsById(id)) {
-            throw new RuntimeException("No existe el calzado con ID: " + id);
+        Producto productoAEliminar = productoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("No existe el calzado con ID: " + id));
+            
+        // Eliminar TODAS las imágenes físicas asociadas (separadas por coma)
+        if (productoAEliminar.getImagen() != null) {
+            for (String url : productoAEliminar.getImagen().split(",")) {
+                String trimmed = url.trim();
+                if (trimmed.contains("res.cloudinary.com")) {
+                    cloudinaryService.eliminarImagen(trimmed);
+                } else if (trimmed.contains("/uploads/")) {
+                    try {
+                        int idx = trimmed.indexOf("/uploads/");
+                        String relativePath = trimmed.substring(idx).replaceFirst("^/", "");
+                        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(relativePath));
+                    } catch (Exception e) {
+                        System.err.println("No se pudo eliminar imagen local: " + e.getMessage());
+                    }
+                }
+            }
         }
+
         // Eliminar dependencias en orden para evitar violaciones de FK
         entityManager.createNativeQuery("DELETE FROM carrito_items WHERE producto_id = :id").setParameter("id", id).executeUpdate();
         entityManager.createNativeQuery("DELETE FROM reserva_temporal_detalle WHERE producto_id = :id").setParameter("id", id).executeUpdate();
@@ -103,7 +165,7 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
-    // 6. SUBIR IMAGEN [ENDPOINT PRIVADO - POST]: Sube una imagen al servidor y retorna su URL
+    // 6. SUBIR IMAGEN [ENDPOINT PRIVADO - POST]: Sube una imagen a Cloudinary y retorna su URL
     @PostMapping("/upload")
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     public ResponseEntity<Map<String, String>> subirImagen(@RequestParam("file") MultipartFile file) {
@@ -111,20 +173,14 @@ public class ProductoController {
             throw new RuntimeException("El archivo seleccionado está vacío");
         }
         try {
-            String folder = "uploads/";
-            java.io.File directory = new java.io.File(folder);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            java.nio.file.Path path = java.nio.file.Paths.get(folder + fileName);
-            java.nio.file.Files.write(path, file.getBytes());
+            // Sube la imagen a Cloudinary y obtiene la URL segura
+            String urlCloudinary = cloudinaryService.subirImagen(file);
 
             java.util.Map<String, String> response = new java.util.HashMap<>();
-            response.put("url", "/uploads/" + fileName);
+            response.put("url", urlCloudinary);
             return ResponseEntity.ok(response);
         } catch (java.io.IOException e) {
-            throw new RuntimeException("Error al guardar la imagen en el servidor: " + e.getMessage());
+            throw new RuntimeException("Error al guardar la imagen en Cloudinary: " + e.getMessage());
         }
     }
 }

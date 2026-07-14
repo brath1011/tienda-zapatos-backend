@@ -30,6 +30,7 @@ public class PedidoService {
     private final SimuladorPagoService simuladorPagoService;
     private final DireccionRepository direccionRepository;
     private final com.Utp.DesarrolloWeb.repository.ReservaTemporalRepository reservaTemporalRepository;
+    private final SseService sseService;
 
     // Respetando el Patrón Singleton e Inyección por Constructor
     public PedidoService(PedidoRepository pedidoRepository, 
@@ -41,7 +42,8 @@ public class PedidoService {
                          CampanaService campanaService,
                          SimuladorPagoService simuladorPagoService,
                          DireccionRepository direccionRepository,
-                         com.Utp.DesarrolloWeb.repository.ReservaTemporalRepository reservaTemporalRepository) {
+                         com.Utp.DesarrolloWeb.repository.ReservaTemporalRepository reservaTemporalRepository,
+                         SseService sseService) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
         this.pagoRepository = pagoRepository;
@@ -52,6 +54,7 @@ public class PedidoService {
         this.simuladorPagoService = simuladorPagoService;
         this.direccionRepository = direccionRepository;
         this.reservaTemporalRepository = reservaTemporalRepository;
+        this.sseService = sseService;
     }
 
     // FLUJO DEL CLIENTE: Registrar compra con control estricto de transacciones (Guía 07)
@@ -106,6 +109,7 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("La reserva expiró o no existe. Por favor, vuelva a intentar la compra."));
             
             // Reconstruir detalles desde la reserva
+            pedido.getDetalles().clear(); // Evita mantener los detalles duplicados enviados por el frontend
             for (com.Utp.DesarrolloWeb.model.ReservaTemporalDetalle rDetalle : reserva.getDetalles()) {
                 Producto producto = rDetalle.getProducto();
                 
@@ -367,7 +371,14 @@ public class PedidoService {
         
         // 3. Cambiar estado
         pedido.setEstado("REEMBOLSADO");
-        return pedidoRepository.save(pedido);
+        Pedido pedidoGuardado = pedidoRepository.save(pedido);
+        
+        // 4. Enviar correo de reembolso
+        if (usuario.getEmail() != null) {
+            emailService.enviarBoletaReembolso(pedidoGuardado, usuario.getEmail());
+        }
+        
+        return pedidoGuardado;
     }
 
     // ---------------- ROLES DE OPERACIÓN ---------------- //
@@ -438,6 +449,8 @@ public class PedidoService {
                 Usuario repartidor = usuarioRepository.findById(idRepartidor)
                     .orElseThrow(() -> new RuntimeException("Repartidor no encontrado"));
                 pedido.setRepartidor(repartidor);
+                // Notificar al repartidor en tiempo real via SSE
+                sseService.notificarNuevoPedido(repartidor.getEmail());
             }
         }
         
@@ -516,7 +529,7 @@ public class PedidoService {
         String emailAutenticado = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario repartidor = usuarioRepository.findByEmail(emailAutenticado)
             .orElseThrow(() -> new RuntimeException("Repartidor no encontrado"));
-        return pedidoRepository.findByRepartidor(repartidor);
+        return pedidoRepository.findByEstadoAndRepartidor("ENTREGADO", repartidor);
     }
 
     // FLUJO REPARTIDOR: Ver historial por fechas
@@ -525,7 +538,10 @@ public class PedidoService {
         String emailAutenticado = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario repartidor = usuarioRepository.findByEmail(emailAutenticado)
             .orElseThrow(() -> new RuntimeException("Repartidor no encontrado"));
-        return pedidoRepository.findByRepartidorAndFechaBetween(repartidor, inicio, fin);
+        return pedidoRepository.findByRepartidorAndFechaBetween(repartidor, inicio, fin)
+            .stream()
+            .filter(p -> "ENTREGADO".equals(p.getEstado()))
+            .collect(java.util.stream.Collectors.toList());
     }
 
     // ---------------- LÓGICA DE RESERVA TEMPORAL ---------------- //
