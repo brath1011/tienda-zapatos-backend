@@ -1,0 +1,14 @@
+2026-07-14T18:27:54.578-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.security.web.FilterChainProxy        : Invoking ExceptionTranslationFilter (16/17)
+2026-07-14T18:27:55.130-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.security.web.FilterChainProxy        : Invoking AuthorizationFilter (17/17)
+2026-07-14T18:27:55.153-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] estMatcherDelegatingAuthorizationManager : Authorizing GET /api/zapatos
+2026-07-14T18:27:55.153-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] estMatcherDelegatingAuthorizationManager : Checking authorization on GET /api/zapatos using org.springframework.security.authorization.SingleResultAuthorizationManager@481a2447
+2026-07-14T18:27:55.159-05:00 DEBUG 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/zapatos
+2026-07-14T18:27:55.163-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.web.servlet.DispatcherServlet        : GET "/api/zapatos", parameters={}, headers={masked} in DispatcherServlet 'dispatcherServlet'
+2026-07-14T18:27:55.163-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.Utp.DesarrolloWeb.controller.ProductoController#listarTodosLosZapatos(int, int)
+2026-07-14T18:27:55.164-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.web.cors.DefaultCorsProcessor        : Skip: response already contains "Access-Control-Allow-Origin"
+2026-07-14T18:27:55.166-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.web.method.HandlerMethod             : Arguments: [0, 1000]
+2026-07-14T18:27:55.186-05:00 DEBUG 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json]
+2026-07-14T18:27:55.186-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [Page 1 of 1 containing com.Utp.DesarrolloWeb.model.Producto instances]
+2026-07-14T18:27:55.193-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.s.w.header.writers.HstsHeaderWriter  : Not injecting HSTS header since it did not match request to [Is Secure]
+2026-07-14T18:27:55.210-05:00 TRACE 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.web.servlet.DispatcherServlet        : No view rendering, null ModelAndView returned.
+2026-07-14T18:27:55.210-05:00 DEBUG 7224 --- [DesarrolloWeb] [http-nio-8090-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 200 OK, headers={masked}

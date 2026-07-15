@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama de Base de Datos - ZapatosApp</title>
+    <!-- Incluimos Mermaid.js para dibujar el diagrama Entidad-Relación -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #1a365d;
+            margin-bottom: 10px;
+        }
+        p.subtitle {
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .mermaid-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        /* ESTA REGLA OBLIGA AL DIBUJO A ENTRAR EN LA PANTALLA */
+        .mermaid svg {
+            max-width: 100%;
+            max-height: 80vh; /* Ocupa máximo el 80% del alto de la pantalla */
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Diagrama Físico de Base de Datos</h1>
+    <p class="subtitle">Estructura actualizada con Perfiles, Direcciones y Campañas Promocionales</p>
+
+    <div class="mermaid-container">
+        <!-- Código Mermaid para el diagrama E-R -->
+        <div class="mermaid">
+        erDiagram
+            %% Entidades Principales
+            USUARIOS {
+                Long id_usuario PK
+                String nombre_completo
+                String email
+                String password
+                String rol "Enum"
+                Boolean activo
+                String tipo_documento
+                String numero_documento
+                String telefono
+            }
+            PRODUCTOS {
+                Long id PK
+                String nombre
+                Double precio
+                Integer stock
+                Long id_categoria FK
+                Long id_marca FK
+                Long id_color FK
+            }
+            PEDIDOS {
+                Long id_pedido PK
+                LocalDate fecha_pedido
+                Double total_pagar
+                String estado 
+                Long id_cliente FK
+                Long id_direccion FK
+                Long id_repartidor FK
+                String tipo_pedido 
+            }
+
+            %% Tablas Secundarias (Satélites de Usuario)
+            DIRECCIONES {
+                Long id_direccion PK
+                Long id_usuario FK
+                String direccion_exacta
+                String distrito
+            }
+            
+            %% Tablas Secundarias (Satélites de Pedido)
+            DETALLE_PEDIDOS {
+                Long id_detalle PK
+                Long id_pedido FK
+                Long id_producto FK
+                Integer cantidad
+                Double precio_unitario
+            }
+            PAGOS {
+                Long id_pago PK
+                Long id_pedido FK
+                String metodo_pago
+                String estado_pago
+            }
+            COMPROBANTES {
+                Long id_comprobante PK
+                Long id_pedido FK
+                String serie_numero
+                Double total
+            }
+
+            %% Tablas de Marketing / Catálogo
+            CAMPANAS_PROMOCIONALES {
+                Long id PK
+                String nombre
+                Double porcentaje_descuento
+                Long id_categoria FK
+                Long id_marca FK
+                Long id_color FK
+                Boolean activa
+            }
+
+            %% Relaciones (El orden aquí afecta el dibujo: Centro -> Afuera)
+            USUARIOS ||--o{ DIRECCIONES : registra
+            USUARIOS ||--o{ PEDIDOS : realiza
+            PEDIDOS ||--o{ DETALLE_PEDIDOS : contiene
+            PEDIDOS ||--|| PAGOS : tiene
+            PEDIDOS ||--|| COMPROBANTES : genera
+            PEDIDOS }o--|| DIRECCIONES : se_envia_a
+            DETALLE_PEDIDOS }o--|| PRODUCTOS : incluye
+            
+            PRODUCTOS }o--|| CATEGORIAS : pertenece
+            PRODUCTOS }o--|| MARCAS : pertenece
+            PRODUCTOS }o--|| COLORES : tiene
+            
+            CAMPANAS_PROMOCIONALES }o--o| CATEGORIAS : aplica_a
+            CAMPANAS_PROMOCIONALES }o--o| MARCAS : aplica_a
+            CAMPANAS_PROMOCIONALES }o--o| COLORES : aplica_a
+        </div>
+    </div>
+
+    <div class="footer">
+        Generado automáticamente basado en las entidades JPA (Spring Boot)
+    </div>
+
+    <script>
+        // Inicializamos Mermaid con un diseño atractivo
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            er: {
+                diagramPadding: 10,
+                layoutDirection: 'LR',
+                minEntityWidth: 120,
+                minEntityHeight: 50,
+                entityPadding: 10,
+                stroke: 'gray',
+                fill: 'aliceblue'
+            }
+        });
+    </script>
+</body>
+</html>
