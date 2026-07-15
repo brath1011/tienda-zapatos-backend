@@ -2,3 +2,7 @@ node_modules/
 dist/ 
 *.sqlite 
 .env 
+target/ 
+*.log 
+*.log.* 
+.idea/ 
