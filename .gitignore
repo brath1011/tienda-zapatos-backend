@@ -6,3 +6,4 @@ target/
 *.log 
 *.log.* 
 .idea/ 
+application-local.properties
