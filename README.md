@@ -1,15 +1,15 @@
-# ☕ UTPShop - Backend (Spring Boot)
+# UTPShop - Backend (Spring Boot)
 
 Este es el backend de UTPShop, una API REST robusta construida con Java 25, Spring Boot 3 y Maven.
 
-## 🛠️ Arquitectura y Tecnologías
+## Arquitectura y Tecnologías
 * **Base de Datos:** PostgreSQL en la nube de **Supabase** (o base de datos PostgreSQL local).
 * **Gestión de Medios:** Integración con **Cloudinary API** para la carga, optimización y almacenamiento seguro de imágenes de los productos.
 * **Seguridad:** Autenticación y autorización basada en Roles con **JWT (JSON Web Tokens)**.
 * **Notificaciones:** Envío automatizado de boletas de pago electrónicas en formato PDF mediante **Gmail SMTP**.
 * **Tiempo Real:** Notificación y actualización de despachos en tiempo real para repartidores usando **WebSockets (STOMP)**.
 
-## 💾 Configuración de la Base de Datos (PostgreSQL)
+## Configuración de la Base de Datos (PostgreSQL)
 
 Para que el proyecto funcione en tu entorno local, tienes dos opciones para la base de datos:
 
@@ -31,7 +31,7 @@ Si prefieres correr una base de datos en tu computadora:
 
 ---
 
-## 🚀 Cómo correr el proyecto en Local
+## Cómo correr el proyecto en Local
 
 ### Requisitos previos:
 * **Java 25** instalado.
